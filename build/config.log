@@ -1,0 +1,23 @@
+# QEMU configure log Tue Apr 15 09:50:10 CST 2025
+# Configured with: '/root/cca/qemu/configure' '--target-list=aarch64-softmmu' '--enable-slirp' '--cc= gcc' '--extra-cflags=-Wno-error' '--disable-docs' '--skip-meson'
+
+#
+gcc -Wno-error -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+gcc -Wno-error -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+config-temp/qemu-conf.c:2:2: error: #error __i386__ not defined
+    2 | #error __i386__ not defined
+      |  ^~~~~
+gcc -Wno-error -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+gcc -Wno-error -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+config-temp/qemu-conf.c:2:2: error: #error __ILP32__ not defined
+    2 | #error __ILP32__ not defined
+      |  ^~~~~
+gcc -m64 -Wno-error -m64 -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+gcc -m64 -Wno-error -c -o config-temp/qemu-conf.o config-temp/qemu-conf.c
+gcc -m64 -Wno-error -Werror -fPIE -DPIE -o config-temp/qemu-conf.exe config-temp/qemu-conf.c -pie
+gcc -m64 -Wno-error -o config-temp/qemu-conf.exe config-temp/qemu-conf.c
+config-temp/qemu-conf.c:2:3: error: #error LITTLE
+    2 | # error LITTLE
+      |   ^~~~~
+aarch64-linux-gnu-gcc -o config-temp/qemu-conf.o -c config-temp/qemu-conf.c
+aarch64-linux-gnu-gcc -r -nostdlib -o config-temp/qemu-conf2.o config-temp/qemu-conf.o -lgcc

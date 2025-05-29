@@ -1,0 +1,8 @@
+[options]
+slirp = enabled
+docs = disabled
+plugins = true
+
+[properties]
+native_file = ['/root/cca/qemu/build/config-meson.cross']
+
