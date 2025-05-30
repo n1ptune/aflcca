@@ -1,1 +1,0 @@
-/root/cca/qemu/subprojects/dtc/libfdt/libfdt.h

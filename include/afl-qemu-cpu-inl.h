@@ -187,7 +187,7 @@ void afl_setup(void) {
 
 /* Fork server logic, invoked once we hit _start. */
 // void afl_forkserver(CPUState *cpu) {
-void afl_forkserver(void) {
+void afl_forkserver(CPUState *cpu) {
 
   static unsigned char tmp[4];
 
@@ -245,7 +245,7 @@ void afl_forkserver(void) {
 
     /* Collect translation requests until child dies and closes the pipe. */
 
-    //afl_wait_tsl(cpu, t_fd[0]);
+    afl_wait_tsl(cpu, t_fd[0]);
 
     /* Get and relay exit status to parent. */
 

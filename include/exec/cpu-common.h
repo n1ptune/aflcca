@@ -22,6 +22,7 @@
 #define EXCP_HALTED     0x10003 /* cpu is halted (waiting for external event) */
 #define EXCP_YIELD      0x10004 /* cpu wants to yield timeslice to another */
 #define EXCP_ATOMIC     0x10005 /* stop-the-world and emulate atomic */
+#define AFL_ENTRY_HIT   0x10006
 
 void cpu_exec_init_all(void);
 void cpu_exec_step_atomic(CPUState *cpu);

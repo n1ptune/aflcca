@@ -1,1 +1,0 @@
-/root/cca/qemu/tests/tcg/Makefile.target

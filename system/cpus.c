@@ -46,7 +46,7 @@
 #include "hw/boards.h"
 #include "hw/hw.h"
 #include "trace.h"
-
+#include "afl.h"
 #ifdef CONFIG_LINUX
 
 #include <sys/prctl.h>
@@ -666,11 +666,11 @@ const AccelOpsClass *cpus_get_accel(void)
 
 void qemu_init_vcpu(CPUState *cpu)
 {
-    // if(pipe(afl_qemuloop_pipe) == -1) {
-    //     perror("qemuloop pipe");
-    //     exit(1);
-    // }
-    // qemu_set_fd_handler(afl_qemuloop_pipe[0], gotPipeNotification, NULL, NULL);
+    if(pipe(afl_qemuloop_pipe) == -1) {
+        perror("qemuloop pipe");
+        exit(1);
+    }
+    qemu_set_fd_handler(afl_qemuloop_pipe[0], gotPipeNotification, NULL, NULL);
 
     MachineState *ms = MACHINE(qdev_get_machine());
 

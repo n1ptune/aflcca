@@ -1,2 +1,0 @@
-/root/cca/qemu/build/meson-private/cmake_SDL2/CMakeFiles/edit_cache.dir
-/root/cca/qemu/build/meson-private/cmake_SDL2/CMakeFiles/rebuild_cache.dir

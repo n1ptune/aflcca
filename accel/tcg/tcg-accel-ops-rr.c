@@ -36,6 +36,7 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-rr.h"
 #include "tcg-accel-ops-icount.h"
+#include "afl.h"
 
 /* Kick all RR vCPUs */
 void rr_kick_vcpu_thread(CPUState *unused)
@@ -168,6 +169,8 @@ static int rr_cpu_count(void)
 
     return cpu_count;
 }
+static QemuThread *single_tcg_cpu_thread;
+
 void gotPipeNotification(void *ctx)
 {
     //qemu_mutex_lock_iothread();
@@ -196,7 +199,7 @@ void gotPipeNotification(void *ctx)
 
     single_tcg_cpu_thread = NULL;
     
-    (&cpus)->tqh_first = restart_cpu;
+    (&cpus_queue)->tqh_first = restart_cpu;
 
 
     qemu_init_vcpu(restart_cpu);
@@ -211,6 +214,7 @@ void gotPipeNotification(void *ctx)
  * This is done explicitly rather than relying on side-effects
  * elsewhere.
  */
+int afl_qemuloop_pipe[2];
 CPUState *restart_cpu = NULL;
 static void *rr_cpu_thread_fn(void *arg)
 {
@@ -232,13 +236,16 @@ static void *rr_cpu_thread_fn(void *arg)
     qemu_guest_random_seed_thread_part2(cpu->random_seed);
 
     /* wait for initial kick-off after machine start */
-    while (first_cpu->stopped) {
+    
+    if(!afl_fork_child)  {
+        while (first_cpu->stopped) {
         qemu_cond_wait_bql(first_cpu->halt_cond);
 
-        /* process any pending work */
-        CPU_FOREACH(cpu) {
-            current_cpu = cpu;
-            qemu_wait_io_event_common(cpu);
+            /* process any pending work */
+            CPU_FOREACH(cpu) {
+                current_cpu = cpu;
+                qemu_wait_io_event_common(cpu);
+            }
         }
     }
 
@@ -253,25 +260,37 @@ static void *rr_cpu_thread_fn(void *arg)
         /* Only used for icount_enabled() */
         int64_t cpu_budget = 0;
 
-        bql_unlock();
-        replay_mutex_lock();
-        bql_lock();
 
-        if (icount_enabled()) {
-            int cpu_count = rr_cpu_count();
+        if(!afl_fork_child)  {
+            bql_unlock();
+            replay_mutex_lock();
+            bql_lock();
+        }
+        
 
-            /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
-            icount_account_warp_timer();
-            /*
-             * Run the timers here.  This is much more efficient than
-             * waking up the I/O thread and waiting for completion.
-             */
-            icount_handle_deadline();
+        // if (icount_enabled()) {
+        //     int cpu_count = rr_cpu_count();
 
-            cpu_budget = icount_percpu_budget(cpu_count);
+        //     /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
+        //     icount_account_warp_timer();
+        //     /*
+        //      * Run the timers here.  This is much more efficient than
+        //      * waking up the I/O thread and waiting for completion.
+        //      */
+        //     icount_handle_deadline();
+
+        //     cpu_budget = icount_percpu_budget(cpu_count);
+        // }
+
+        if(!afl_fork_child)  {
+            replay_mutex_unlock();
         }
 
-        replay_mutex_unlock();
+        if(afl_fork_child) {
+            cpu->exit_request = 0;
+            cpu->stop = false;
+            cpu->stopped = false;
+        }
 
         if (!cpu) {
             cpu = first_cpu;
@@ -288,6 +307,7 @@ static void *rr_cpu_thread_fn(void *arg)
 
             if (cpu_can_run(cpu)) {
                 int r;
+                bql_unlock();
                 //if (icount_enabled()) {
                 //    icount_prepare_for_run(cpu);
                 //}
@@ -315,44 +335,44 @@ static void *rr_cpu_thread_fn(void *arg)
                     bql_lock();
                     break;
                 }
-                // else if (r == AFL_ENTRY_HIT) {
-                //     qemu_log("Hit afl cpu loop\n");
-                //     // ask to run forkserver
+                else if (r == AFL_ENTRY_HIT) {
+                    qemu_log("Hit afl cpu loop\n");
+                    // ask to run forkserver
                     
-                //     // save context of cpu
-                //     restart_cpu = (&cpus)->tqh_first;
+                    // save context of cpu
+                    restart_cpu = (&cpus_queue)->tqh_first;
 
-                //     (&cpus)->tqh_first = NULL;
+                    (&cpus_queue)->tqh_first = NULL;
 
-                //     // notify iothread
-                //     if(write(afl_qemuloop_pipe[1], "FORK", 4) != 4) {
-                //         qemu_log("write afl_qemuloop_pipe failed\n");
-                //     }
-                //     afl_qemuloop_pipe[1] = -1;
+                    // notify iothread
+                    if(write(afl_qemuloop_pipe[1], "FORK", 4) != 4) {
+                        qemu_log("write afl_qemuloop_pipe failed\n");
+                    }
+                    afl_qemuloop_pipe[1] = -1;
 
 
-                //     //qatomic_set(&rr_current_cpu, NULL);
+                    //qatomic_set(&rr_current_cpu, NULL);
 
-                //     //restart_cpu->thread = NULL;
-                //     //cpu->thread = NULL;
+                    //restart_cpu->thread = NULL;
+                    //cpu->thread = NULL;
 
-                //     //qatomic_mb_set(&cpu->exit_request, 0);
-                // qemu_log("Waiting cpu thread for io event then exit...\n");
+                    //qatomic_mb_set(&cpu->exit_request, 0);
+                    qemu_log("Waiting cpu thread for io event then exit...\n");
 
-                //     //qemu_notify_event();
+                    //qemu_notify_event();
 
-                //     qemu_wait_io_event(cpu);
+                    qemu_wait_io_event(cpu);
 
-                //     //tcg_cpus_destroy(cpu);
-                //     //rr_deal_with_unplugged_cpus();
+                    //tcg_cpus_destroy(cpu);
+                    //rr_deal_with_unplugged_cpus();
 
-                //     //rcu_unregister_thread();
+                    //rcu_unregister_thread();
 
-                //     qemu_mutex_unlock_iothread();
-                //     rcu_unregister_thread();
-                //     sleep(1);
-                //     return NULL;
-                // }
+                    bql_unlock();
+                    rcu_unregister_thread();
+                    sleep(1);
+                    return NULL;
+                }
             } else if (cpu->stop) {
                 if (cpu->unplug) {
                     cpu = CPU_NEXT(cpu);

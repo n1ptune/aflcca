@@ -95,7 +95,7 @@ target_ulong startFork(CPUState* env)
         exit(0);
     }
     afl_setup();
-    //afl_forkserver(env);
+    afl_forkserver(env);
     printf("start fork\n");
     return 0;
 }

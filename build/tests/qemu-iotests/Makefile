@@ -1,1 +1,0 @@
-/root/cca/qemu/tests/qemu-iotests/Makefile

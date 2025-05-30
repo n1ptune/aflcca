@@ -42,6 +42,7 @@
 #include "internal-common.h"
 #include "internal-target.h"
 #include "afl-qemu-cpu-inl.h"
+#include "afl.h"
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -1022,6 +1023,13 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 tb_add_jump(last_tb, tb_exit, tb);
             }
 
+
+            if (tb->pc == afl_entry_point) {
+                if (!afl_fork_child)  {
+                    qemu_log("cpu_exec loop with pc: 0x%lx pid %d\n", tb->pc, getpid());
+                    return AFL_ENTRY_HIT;
+                }
+            }
             cpu_loop_exec_tb(cpu, tb, pc, &last_tb, &tb_exit);
 
             /* Try to align the host and virtual clocks
