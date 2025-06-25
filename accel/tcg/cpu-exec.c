@@ -272,6 +272,7 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, vaddr pc,
 
     tb = tb_htable_lookup(cpu, pc, cs_base, flags, cflags);
     if (tb == NULL) {
+        // qemu_log("pc %lx no hit\n", pc);
         return NULL;
     }
 
@@ -451,7 +452,7 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     TranslationBlock *last_tb;
     const void *tb_ptr = itb->tc.ptr;
 
-    AFL_QEMU_CPU_SNIPPET2;
+    // AFL_QEMU_CPU_SNIPPET2;
 
     if (qemu_loglevel_mask(CPU_LOG_TB_CPU | CPU_LOG_EXEC)) {
         log_cpu_exec(log_pc(cpu, itb), cpu, itb);
@@ -776,6 +777,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
     return false;
 }
 
+static int logged = 0;
 static inline bool icount_exit_request(CPUState *cpu)
 {
     if (!icount_enabled()) {
@@ -966,9 +968,9 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
             vaddr pc;
             uint64_t cs_base;
             uint32_t flags, cflags;
-
+            
             cpu_get_tb_cpu_state(cpu_env(cpu), &pc, &cs_base, &flags);
-
+            
             /*
              * When requested, use an exact setting for cflags for the next
              * execution.  This is used for icount, precise smc, and stop-
@@ -987,14 +989,16 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 break;
             }
 
+            // qemu_log("cpu_exec loop with pc: 0x%lx pid %d\n", pc, getpid());
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
+            
             if (tb == NULL) {
                 CPUJumpCache *jc;
                 uint32_t h;
 
                 mmap_lock();
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
-                AFL_QEMU_CPU_SNIPPET1;
+                // AFL_QEMU_CPU_SNIPPET1;
                 mmap_unlock();
 
                 /*
@@ -1023,13 +1027,24 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 tb_add_jump(last_tb, tb_exit, tb);
             }
 
-
-            if (tb->pc == afl_entry_point) {
+            if (pc == afl_entry_point) {
                 if (!afl_fork_child)  {
-                    qemu_log("cpu_exec loop with pc: 0x%lx pid %d\n", tb->pc, getpid());
+                    qemu_log("!afl_fork_child cpu_exec loop with pc: 0x%lx pid %d\n", pc, getpid());
                     return AFL_ENTRY_HIT;
                 }
             }
+            // printf("afl_fork_child cpu_exec loop with pc: 0x%lx pid %d\n", pc, getpid());
+            // if (pc == afl_entry_point) {
+            //     exit(0);
+            // }
+            // if(afl_fork_child){
+            //      qemu_log("afl_fork_child cpu_exec loop with pc: 0x%lx pid %d\n", pc, getpid());
+            // }
+            // uint32_t el = (cpu_env(cpu)->pstate >> 2 ) & 3;
+            // uint32_t secure = cpu_env(cpu)->cp15.scr_el3 & 0x1 ;
+            // uint32_t pps = (cpu_env(cpu)->cp15.gpccr_el3 >> 0) & 0x7;
+            // printf("afl_fork_child cpu_exec loop with pc: 0x%lx el %d secure %d pps %d\n", pc, el, secure, pps);
+            AFL_QEMU_CPU_SNIPPET2;
             cpu_loop_exec_tb(cpu, tb, pc, &last_tb, &tb_exit);
 
             /* Try to align the host and virtual clocks

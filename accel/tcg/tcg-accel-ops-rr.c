@@ -37,6 +37,7 @@
 #include "tcg-accel-ops-rr.h"
 #include "tcg-accel-ops-icount.h"
 #include "afl.h"
+#include "exec/ramblock.h"
 
 /* Kick all RR vCPUs */
 void rr_kick_vcpu_thread(CPUState *unused)
@@ -170,11 +171,62 @@ static int rr_cpu_count(void)
     return cpu_count;
 }
 static QemuThread *single_tcg_cpu_thread;
+// void ram_block_remap_all(void)
+// {
+//     RAMBlock *block;
+
+//     RAMBLOCK_FOREACH(block) {
+//         void *old_host = block->host;
+
+//         if (block->fd >= 0) {
+//             // 文件后端内存：先解除旧映射，再创建新映射
+
+//             // 1. 解除从父进程继承来的、地址可能已无效的映射
+//             if (munmap(old_host, block->max_length) != 0) {
+//                 printf("munmap failed for %s: %s",
+//                        block->idstr, strerror(errno));
+//                 // 这是一个严重错误，通常应该中止
+//                 exit(1);
+//             }
+            
+//             // 2. 创建新映射，让内核为我们选择一个合适的地址 (传入 NULL)
+//             void *new_host = mmap(NULL, block->max_length, // <-- 地址传 NULL
+//                                   PROT_READ | PROT_WRITE,
+//                                   MAP_SHARED, // <-- 不再使用 MAP_FIXED
+//                                   block->fd, block->offset); // 使用在文件内的偏移
+
+//             if (new_host == MAP_FAILED) {
+//                 printf("RAMBlock remap mmap failed for %s: %s",
+//                        block->idstr, strerror(errno));
+//                 exit(1);
+//             }
+//             // 3. 更新 block->host 为内核分配的新地址
+//             block->host = new_host;
+//         } else {
+//             // 匿名内存：确保可写 (这部分逻辑保持不变)
+//             // if (mprotect(old_host, block->used_length, 
+//             //              PROT_READ | PROT_WRITE) < 0) {
+//             //     printf("mprotect failed for %s: %s",
+//             //            block->idstr, strerror(errno));
+//             // }
+//             printf("no fd\n");
+//         }
+        
+//         // 更新关联数据结构 (保持不变)
+//         if (block->mr) {
+//             block->mr->ram_block = block;
+//         }
+        
+//         printf("Remapped RAMBlock %s: %p -> %p\n", 
+//                block->idstr, old_host, block->host);
+//     }
+
+// }
 
 void gotPipeNotification(void *ctx)
 {
     //qemu_mutex_lock_iothread();
-    qemu_log("PIPE Notification here!!!\n");
+    // qemu_log("PIPE Notification here!!!\n");
     CPUArchState *env;
     char buf[4];
 
@@ -184,7 +236,7 @@ void gotPipeNotification(void *ctx)
         exit(1);
     }
 
-    qemu_log("PIPE Notification start up afl forkserver! pid %d\n", getpid());
+    // qemu_log("PIPE Notification start up afl forkserver! pid %d\n", getpid());
     afl_setup();
     env = NULL; //XXX for now.. if we want to share JIT to the parent we will need to pass in a real env here
     //env = restart_cpu->env_ptr;
@@ -194,16 +246,23 @@ void gotPipeNotification(void *ctx)
     //tcg_cpu_thread = NULL;
     //(CPUState *)(first_cpu) = restart_cpu;
 
-    //qemu_log("PIPE Notification after afl fork being CHILD %d \n", getpid());
+    // qemu_log("PIPE Notification after afl fork being CHILD %d \n", getpid());
     //restart_cpu->as = NULL;
 
     single_tcg_cpu_thread = NULL;
     
     (&cpus_queue)->tqh_first = restart_cpu;
 
+    // qemu_log("pc..%lx \n", cpu_env(restart_cpu)->pc);
+    
 
     qemu_init_vcpu(restart_cpu);
+    
+    // ram_block_remap_all();
+    // tlb_flush(restart_cpu);
+    // tb_flush(restart_cpu);
 
+    // qemu_log("PIPE Notification after qemu_init_vcpu \n");
     //qemu_clock_warp(QEMU_CLOCK_VIRTUAL);
     /* continue running iothread in child process... */
 }
@@ -218,6 +277,7 @@ int afl_qemuloop_pipe[2];
 CPUState *restart_cpu = NULL;
 static void *rr_cpu_thread_fn(void *arg)
 {
+    // qemu_log("rr_cpu_thread_fn\n");
     Notifier force_rcu;
     CPUState *cpu = arg;
 
@@ -316,14 +376,16 @@ static void *rr_cpu_thread_fn(void *arg)
                 //if (icount_enabled()) {
                 //    icount_process_data(cpu);
                 //}
-                bql_unlock();
-                if (icount_enabled()) {
-                    icount_prepare_for_run(cpu, cpu_budget);
-                }
+                // bql_lock();
+                // if (icount_enabled()) {
+                //     icount_prepare_for_run(cpu, cpu_budget);
+                // }
+                // qemu_log("cpu pc..%lx\n", cpu_env(cpu)->pc);
                 r = tcg_cpu_exec(cpu);
-                if (icount_enabled()) {
-                    icount_process_data(cpu);
-                }
+                // qemu_log("rr cpu thread\n");
+                // if (icount_enabled()) {
+                //     icount_process_data(cpu);
+                // }
                 bql_lock();
 
                 if (r == EXCP_DEBUG) {
@@ -357,7 +419,7 @@ static void *rr_cpu_thread_fn(void *arg)
                     //cpu->thread = NULL;
 
                     //qatomic_mb_set(&cpu->exit_request, 0);
-                    qemu_log("Waiting cpu thread for io event then exit...\n");
+                    // qemu_log("Waiting cpu thread for io event then exit...\n");
 
                     //qemu_notify_event();
 
@@ -367,7 +429,7 @@ static void *rr_cpu_thread_fn(void *arg)
                     //rr_deal_with_unplugged_cpus();
 
                     //rcu_unregister_thread();
-
+                    // qemu_log("restart pc..%lx %lx \n", cpu_env(cpu)->pc, cpu_env(restart_cpu)->pc);
                     bql_unlock();
                     rcu_unregister_thread();
                     sleep(1);
@@ -380,7 +442,7 @@ static void *rr_cpu_thread_fn(void *arg)
                 break;
             }
 
-            cpu = CPU_NEXT(cpu);
+            // cpu = CPU_NEXT(cpu);
         } /* while (cpu && !cpu->exit_request).. */
 
         /* Does not need a memory barrier because a spurious wakeup is okay.  */
@@ -402,32 +464,34 @@ static void *rr_cpu_thread_fn(void *arg)
         rr_deal_with_unplugged_cpus();
     }
 
-    g_assert_not_reached();
+    rcu_unregister_thread();
+    return NULL;
 }
 
 void rr_start_vcpu_thread(CPUState *cpu)
 {
+    // qemu_log("rr_start_vcpu_thread: %d\n", cpu->cpu_index);
     char thread_name[VCPU_THREAD_NAME_SIZE];
     static QemuCond *single_tcg_halt_cond;
-    static QemuThread *single_tcg_cpu_thread;
 
     g_assert(tcg_enabled());
     tcg_cpu_init_cflags(cpu, false);
 
     if (!single_tcg_cpu_thread) {
-        single_tcg_halt_cond = cpu->halt_cond;
-        single_tcg_cpu_thread = cpu->thread;
+        // qemu_log("rr_start_vcpu_thread: creating single TCG thread\n");
+        cpu->thread = g_malloc0(sizeof(QemuThread));
+        cpu->halt_cond = g_malloc0(sizeof(QemuCond));
+        qemu_cond_init(cpu->halt_cond);
 
         /* share a single thread for all cpus with TCG */
         snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "ALL CPUs/TCG");
         qemu_thread_create(cpu->thread, thread_name,
                            rr_cpu_thread_fn,
                            cpu, QEMU_THREAD_JOINABLE);
+        single_tcg_halt_cond = cpu->halt_cond;
+        single_tcg_cpu_thread = cpu->thread;
     } else {
         /* we share the thread, dump spare data */
-        g_free(cpu->thread);
-        qemu_cond_destroy(cpu->halt_cond);
-        g_free(cpu->halt_cond);
         cpu->thread = single_tcg_cpu_thread;
         cpu->halt_cond = single_tcg_halt_cond;
 

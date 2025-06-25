@@ -123,21 +123,27 @@ target_ulong getWork(CPUARMState* env, target_ulong ptr, target_ulong sz)
     fclose(fp);
     return 0;
 }
-// target_ulong startWork(CPUArchState *env, target_ulong ptr)
-// {
-//     target_ulong start, end;
+target_ulong startWork() {
+    FILE *fp;
+    target_ulong filesize = 0;
 
-//     //printf("pid %d: ptr %lx\n", getpid(), ptr);fflush(stdout);
-//     start = cpu_ldq_data(env, ptr);
-//     end = cpu_ldq_data(env, ptr + sizeof start);
-//     //printf("pid %d: startWork %lx - %lx\n", getpid(), start, end);fflush(stdout);
+    fp = fopen(aflFile, "rb");
+    if (!fp) {
+        perror(aflFile);
+        return (target_ulong)-1;
+    }
 
-//     afl_start_code = start;
-//     afl_end_code   = end;
-//     aflGotLog = 0;
-//     aflStart = 1;
-//     return 0;
-// }
+    if (fseek(fp, 0, SEEK_END) == 0) {
+        filesize = (target_ulong)ftell(fp);
+    } else {
+        perror("fseek");
+        filesize = (target_ulong)-1;
+    }
+
+    fclose(fp);
+    printf("file size %d\n", filesize);
+    return filesize;
+}
 
 target_ulong doneWork(target_ulong val)
 {
@@ -11904,6 +11910,7 @@ static void aarch64_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     }
 
     s->pc_curr = pc;
+    // qemu_log("dcbase %p %p \n", dcbase, &s->base);
     insn = arm_ldl_code(env, &s->base, pc, s->sctlr_b);
     s->insn = insn;
     s->base.pc_next = pc + 4;

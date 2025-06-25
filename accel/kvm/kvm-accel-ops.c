@@ -64,6 +64,7 @@ static void *kvm_vcpu_thread_fn(void *arg)
 
 static void kvm_start_vcpu_thread(CPUState *cpu)
 {
+    qemu_log("Starting KVM vCPU thread for CPU %d\n", cpu->cpu_index);
     char thread_name[VCPU_THREAD_NAME_SIZE];
 
     snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "CPU %d/KVM",

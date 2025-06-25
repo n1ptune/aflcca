@@ -67,7 +67,7 @@ typedef uint64_t afl_ulong;
 
 
 #define AFL_QEMU_CPU_SNIPPET2 do { \
-    afl_maybe_log(itb->pc); \
+    afl_maybe_log(pc); \
   } while (0)
 
 /* We use one additional file descriptor to relay "needs translation"
@@ -81,16 +81,14 @@ static unsigned char *afl_area_ptr;
 
 /* Exported variables populated by the code patched into elfload.c: */
 
-afl_ulong afl_entry_point, /* ELF entry point (_start) */
+afl_ulong afl_entry_point = (afl_ulong)0x600013dc, /* ELF entry point (_start) */
           afl_start_code,  /* .text start pointer      */
           afl_end_code;    /* .text end pointer        */
-
-
 int aflStart = 0;               /* we've started fuzzing */
 int aflEnableTicks = 0;         /* re-enable ticks for each test */
 int aflGotLog = 0;              /* we've seen dmesg logging */
 
-const char *aflFile = "/tmp/work";
+const char *aflFile = "/root/cca-latest/test/in/work1";
 unsigned long aflPanicAddr = (unsigned long)-1;
 unsigned long aflDmesgAddr = (unsigned long)-1;
 /* Set in the child process in forkserver mode: */
@@ -179,7 +177,7 @@ void afl_setup(void) {
      not entirely sure what is the cause. This disables that
      behaviour, and seems to work alright? */
 
-  // printf("afl_setup\n");
+  printf("afl_setup\n");
   rcu_disable_atfork();
 
 }
@@ -223,6 +221,7 @@ void afl_forkserver(CPUState *cpu) {
     close(t_fd[1]);
 
     child_pid = fork();
+    printf("%d\n", child_pid);
     if (child_pid < 0) exit(4);
 
     if (!child_pid) {
@@ -245,7 +244,7 @@ void afl_forkserver(CPUState *cpu) {
 
     /* Collect translation requests until child dies and closes the pipe. */
 
-    afl_wait_tsl(cpu, t_fd[0]);
+    // afl_wait_tsl(cpu, t_fd[0]);
 
     /* Get and relay exit status to parent. */
 

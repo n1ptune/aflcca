@@ -671,10 +671,12 @@ void qemu_init_vcpu(CPUState *cpu)
         exit(1);
     }
     qemu_set_fd_handler(afl_qemuloop_pipe[0], gotPipeNotification, NULL, NULL);
+    // qemu_log("qemu_init_vcpu: %d\n", cpu->cpu_index);
 
     MachineState *ms = MACHINE(qdev_get_machine());
 
     cpu->nr_cores = machine_topo_get_cores_per_socket(ms);
+    // qemu_log("qemu_init_vcpu: %d cores\n", cpu->nr_cores);
     cpu->nr_threads =  ms->smp.threads;
     cpu->stopped = true;
     cpu->random_seed = qemu_guest_random_seed_thread_part1();
@@ -694,6 +696,7 @@ void qemu_init_vcpu(CPUState *cpu)
     while (!cpu->created) {
         qemu_cond_wait(&qemu_cpu_cond, &bql);
     }
+    // qemu_log("qemu_init_vcpu: %d done \n", cpu->cpu_index);
 }
 
 void cpu_stop_current(void)

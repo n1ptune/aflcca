@@ -217,7 +217,7 @@ void gen_sve_str(DisasContext *s, TCGv_ptr, int vofs, int len, int rn, int imm);
 
 target_ulong startFork(CPUState* env);
 target_ulong getWork(CPUARMState* env, target_ulong ptr, target_ulong sz);
-target_ulong startWork(CPUState *env, target_ulong ptr);
+target_ulong startWork();
 target_ulong doneWork(target_ulong val);
 
 #endif /* TARGET_ARM_TRANSLATE_A64_H */

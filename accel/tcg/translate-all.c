@@ -300,7 +300,9 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     qemu_thread_jit_write();
 
     phys_pc = get_page_addr_code_hostp(env, pc, &host_pc);
-
+    // printf(""
+    //        "tb_gen_code: pc %lx phys_pc %lx host_pc %lx\n",
+    //        pc, phys_pc, host_pc);
     if (phys_pc == -1) {
         /* Generate a one-shot TB with 1 insn in it */
         cflags = (cflags & ~CF_COUNT_MASK) | 1;

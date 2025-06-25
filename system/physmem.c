@@ -1853,6 +1853,7 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
             new_block->host = qemu_anon_ram_alloc(new_block->max_length,
                                                   &new_block->mr->align,
                                                   shared, noreserve);
+            // printf("new_block->host %lx\n",new_block->host);
             if (!new_block->host) {
                 error_setg_errno(errp, errno,
                                  "cannot set up guest memory '%s'",
@@ -1925,10 +1926,11 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
          * Configure it unless the machine is a qtest server, in which case
          * KVM is not used and it may be forked (eg for fuzzing purposes).
          */
-        if (!qtest_enabled()) {
-            qemu_madvise(new_block->host, new_block->max_length,
-                         QEMU_MADV_DONTFORK);
-        }
+        // if (!qtest_enabled()) {
+        //     printf("no fork\n");
+        //     qemu_madvise(new_block->host, new_block->max_length,
+        //                  QEMU_MADV_DONTFORK);
+        // }
         ram_block_notify_add(new_block->host, new_block->used_length,
                              new_block->max_length);
     }

@@ -117,6 +117,8 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
                      vaddr pc, void *host_pc, const TranslatorOps *ops,
                      DisasContextBase *db)
 {
+    // qemu_log("translator_loop: pc=%lx, host_pc=%p\n",
+    //          pc, host_pc);
     uint32_t cflags = tb_cflags(tb);
     TCGOp *icount_start_insn;
     TCGOp *first_insn_start = NULL;
@@ -166,6 +168,7 @@ void translator_loop(CPUState *cpu, TranslationBlock *tb, int *max_insns,
          * done next -- either exiting this loop or locate the start of
          * the next instruction.
          */
+        // qemu_log("translate_insn pc %lx %lx\n", db->pc_next, db->pc_first);
         ops->translate_insn(db, cpu);
 
         /*
@@ -256,9 +259,12 @@ static bool translator_ld(CPUArchState *env, DisasContextBase *db,
     host = db->host_addr[0];
     base = db->pc_first;
 
+    
     if (likely(((base ^ last) & TARGET_PAGE_MASK) == 0)) {
         /* Entire read is from the first page. */
         memcpy(dest, host + (pc - base), len);
+        // qemu_log("translator_ld: dest=%p, host=%p, len=%d\n",
+        //          dest, host + (pc - base), len);
         return true;
     }
 
@@ -442,7 +448,7 @@ uint16_t translator_lduw(CPUArchState *env, DisasContextBase *db, vaddr pc)
 uint32_t translator_ldl(CPUArchState *env, DisasContextBase *db, vaddr pc)
 {
     uint32_t raw, tgt;
-
+    // qemu_log("translator_ldl: pc=%lx raw = %p\n", pc, &raw);
     if (translator_ld(env, db, &raw, pc, sizeof(raw))) {
         tgt = tswap32(raw);
     } else {

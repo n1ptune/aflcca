@@ -70,7 +70,7 @@ target_ulong HELPER(AflEnv)(CPUARMState *env, target_ulong code, target_ulong a1
     switch(code) {
         case 1: return startFork(cs);
         case 2: return getWork(env, a1, a2);
-        // case 3: return startWork(env, a1);
+        case 3: return startWork();
         case 4: return doneWork(a2);
         default: return -1;
     }

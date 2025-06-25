@@ -785,6 +785,13 @@ void tcg_register_thread(void)
 #else
 void tcg_register_thread(void)
 {
+    static bool first = true;
+    if (!first) {
+        tcg_ctx = tcg_ctxs[0];
+        return;
+    }
+    first = false;
+
     TCGContext *s = g_malloc(sizeof(*s));
     unsigned int i, n;
 

@@ -1,6 +1,8 @@
 //#include "exec/target_long.h"
 typedef uint64_t afl_ulong;
-extern afl_ulong afl_start_code, afl_end_code, afl_entry_point;
+extern afl_ulong afl_start_code;
+extern afl_ulong afl_end_code;
+extern afl_ulong afl_entry_point;
 extern unsigned char afl_fork_child;
 extern int aflEnableTicks;
 extern int aflStart;

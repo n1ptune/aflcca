@@ -1233,6 +1233,7 @@ static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
     const TCGCPUOps *ops = cpu->cc->tcg_ops;
     CPUTLBEntryFull full;
 
+    // printf("addr %lx size %d\n", addr, size);
     if (ops->tlb_fill_align) {
         if (ops->tlb_fill_align(cpu, &full, addr, type, mmu_idx,
                                 memop, size, probe, ra)) {
@@ -1362,13 +1363,21 @@ static int probe_access_internal(CPUState *cpu, vaddr addr,
     bool force_mmio = check_mem_cbs && cpu_plugin_mem_cbs_enabled(cpu);
     CPUTLBEntryFull *full;
 
+    // printf("TLB hit: vaddr=%lx mmu_idx=%d\n",
+    //                addr, mmu_idx);
     if (!tlb_hit_page(tlb_addr, page_addr)) {
+        // printf("victim TLB miss: vaddr=%lx mmu_idx=%d\n",
+        //            addr, mmu_idx);
         if (!victim_tlb_hit(cpu, mmu_idx, index, access_type, page_addr)) {
+            // printf("TLB miss: vaddr=%lx mmu_idx=%d\n",
+            //        addr, mmu_idx);
             if (!tlb_fill_align(cpu, addr, access_type, mmu_idx,
                                 0, fault_size, nonfault, retaddr)) {
                 /* Non-faulting page table read failed.  */
                 *phost = NULL;
                 *pfull = NULL;
+                // printf("TLB fill wrong: vaddr=%lx mmu_idx=%d\n",
+                //    addr, mmu_idx);
                 return TLB_INVALID_MASK;
             }
 
@@ -1399,6 +1408,7 @@ static int probe_access_internal(CPUState *cpu, vaddr addr,
 
     /* Everything else is RAM. */
     *phost = (void *)((uintptr_t)addr + entry->addend);
+    // printf("phost %lx\n",phost);
     return flags;
 }
 
@@ -1533,7 +1543,6 @@ tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, vaddr addr,
 {
     CPUTLBEntryFull *full;
     void *p;
-
     (void)probe_access_internal(env_cpu(env), addr, 1, MMU_INST_FETCH,
                                 cpu_mmu_index(env_cpu(env), true), false,
                                 &p, &full, 0, false);

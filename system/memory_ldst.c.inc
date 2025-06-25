@@ -115,6 +115,7 @@ static inline uint64_t glue(address_space_ldq_internal, SUFFIX)(ARG1_DECL,
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
         switch (endian) {
         case DEVICE_LITTLE_ENDIAN:
+            // printf("ldq_le_p called with ptr: %lx addr %lx\n", ptr, addr1);
             val = ldq_le_p(ptr);
             break;
         case DEVICE_BIG_ENDIAN:

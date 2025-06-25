@@ -132,6 +132,7 @@ void mttcg_kick_vcpu_thread(CPUState *cpu)
 
 void mttcg_start_vcpu_thread(CPUState *cpu)
 {
+    qemu_log("Starting MTTCG vCPU thread for CPU %d\n", cpu->cpu_index);
     char thread_name[VCPU_THREAD_NAME_SIZE];
 
     g_assert(tcg_enabled());

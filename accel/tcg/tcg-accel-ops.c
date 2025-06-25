@@ -211,6 +211,7 @@ static void tcg_accel_ops_init(AccelOpsClass *ops)
             ops->get_virtual_clock = icount_get;
             ops->get_elapsed_ticks = icount_get;
         } else {
+             //qemu_log("We are in tcg single thread mode... \n");
             ops->handle_interrupt = tcg_handle_interrupt;
         }
     }

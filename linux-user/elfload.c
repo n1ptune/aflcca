@@ -26,7 +26,7 @@
 #include "qemu/error-report.h"
 #include "target_signal.h"
 #include "tcg/debuginfo.h"
-
+#include "afl.h"
 #ifdef TARGET_ARM
 #include "target/arm/cpu-features.h"
 #endif
@@ -3397,8 +3397,8 @@ static void load_elf_image(const char *image_name, const ImageSource *src,
     info->brk = TARGET_PAGE_ALIGN(hiaddr + load_bias);
     info->elf_flags = ehdr->e_flags;
 
-    // printf("afl_entry_point\n");
-    // if (!afl_entry_point) afl_entry_point = info->entry;
+    printf("afl_entry_point\n");
+    if (!afl_entry_point) afl_entry_point = info->entry;
 
     prot_exec = PROT_EXEC;
 #ifdef TARGET_AARCH64
